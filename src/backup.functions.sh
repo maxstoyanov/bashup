@@ -24,8 +24,8 @@ function LOG {
   # emerg, alert, crit, err, warning, notice, info, debug
   local level="$1"
   local message="$2"
-  # echo "$message" | systemd-cat --identifier=bashup --priority=$level
-  echo "$message"
+  echo "$message" | systemd-cat --identifier=bashup --priority=$level
+  echo "$(date) :: $level :: $message"
 }
 
 function START {
