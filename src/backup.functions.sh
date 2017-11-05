@@ -131,20 +131,20 @@ function PIPE_FOLDER {
 
   if [ ${STATUS[0]} -eq 0 ]
     ERROR "tar could not read file (code=${STATUS[0]}, path=${source})"
-    $failed=1
+    failed=1
   fi
 
   if [ ${STATUS[1]} -eq 0 ]
     ERROR "gpg could not encrypt file (code=${STATUS[1]}, path=${source})"
-    $failed=1
+    failed=1
   fi
 
   if [ ${STATUS[2]} -eq 0 ]
     ERROR "ssh could not stream files (code=${STATUS[1]}, path=${source})"
-    $failed=1
+    failed=1
   fi
 
-  if [ $failed -eq 0]
+  if [ $failed eq 0]
     INFO "Backup successful (file=$outputfile)"
   fi
 }
