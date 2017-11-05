@@ -19,39 +19,35 @@ fi
 # Now we initiate several loggign functions. Those are only availible when this
 # file is included with 'source' and a relative or absolute path.
 
+function LOG {
+  # possible log levels
+  # emerg, alert, crit, err, warning, notice, info, debug
+  local level="$1"
+  local message="$2"
+  # echo "$message" | systemd-cat --identifier=bashup --priority=$level
+  echo "$message"
+}
+
 function START {
-  local date=$(date)
-  echo "[$date] [INFO]   Start backup unit $unit" >> $logpath
-  echo "[$date] [INFO]   Start backup unit $unit"
+  LOG "info" "Start backup unit $unit"
 }
 
 function END {
-  local date=$(date)
-  echo "[$date] [INFO]   End backup unit $unit" >> $logpath
-  echo "[$date] [INFO]   End backup unit $unit"
+  LOG "info" "End backup unit $unit"
 }
 
 function DEBUG {
   if [ $debug ]; then
-    local message="$1"
-    local date=$(date)
-    echo "[$date] [DEBUG]  $message" >> $logpath
-    echo "[$date] [DEBUG]  $message"
+    LOG "debug" "Start backup unit $1"
   fi
 }
 
 function INFO {
-  local message="$1"
-  local date=$(date)
-  echo "[$date] [INFO]   $message" >> $logpath
-  echo "[$date] [INFO]   $message"
+  LOG "info" $1
 }
 
 function ERROR {
-  local message="$1"
-  local date=$(date)
-  echo "[$date] [ERROR]  $message" >> $logpath
-  echo "[$date] [ERROR]  $message"
+  LOG "err" $1
 }
 
 
@@ -116,6 +112,42 @@ function CLEAN {
 
 ################################################################################
 # Public backup functions...
+
+function PIPE_FOLDER {
+  local source=$1
+  local subunit=$2
+  local outputfile=${timestamp}_${unit}_${subunit}.tar.gz.gpg
+
+  # ${ssh_port} ${temporary_backup}/${outputfile} ${ssh_user}@${ssh_server}:/${ssh_pathprefix}/
+
+  cd $source
+  tar --create --gzip --to-stdout * | gpg --encrypt --trust-model always --recipient ${gpgkeyid} --batch --quiet | ssh ${ssh_user}@${ssh_server} "cat > /${ssh_pathprefix}/$outputfile"
+
+  # Split PIPESTATUS as an array.
+  # See http://unix.stackexchange.com/a/209184
+  IFS=' ' read -ra STATUS <<< "${PIPESTATUS[*]}"
+
+  local failed = 0
+
+  if [ ${STATUS[0]} -eq 0 ]
+    ERROR "tar could not read file (code=${STATUS[0]}, path=${source})"
+    $failed=1
+  fi
+
+  if [ ${STATUS[1]} -eq 0 ]
+    ERROR "gpg could not encrypt file (code=${STATUS[1]}, path=${source})"
+    $failed=1
+  fi
+
+  if [ ${STATUS[2]} -eq 0 ]
+    ERROR "ssh could not stream files (code=${STATUS[1]}, path=${source})"
+    $failed=1
+  fi
+
+  if [ $failed -eq 0]
+    INFO "Backup successful (file=$outputfile)"
+  fi
+}
 
 # Create tar.gz.gpg backup file from folder
 # Usage: FOLDER /path/to/folder myunit
